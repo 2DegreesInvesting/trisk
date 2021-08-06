@@ -78,6 +78,13 @@ global_production_coverage_by_sector <- production_coverage_by_sector %>%
 sector_production_mapped_per_region_per_technology <- sector_production_mapped_per_technology_country_and_year %>%
   filter(production_year == 2019) %>%
   left_join(country_region_bridge, by = c("iso2" = "iso_a2")) %>%
+  mutate(
+    technology = dplyr::if_else(
+      sector == "Coal",
+      "Coal",
+      technology
+    )
+  ) %>% # aggregated to allow for tech comparison
   group_by(sector, technology, production_year, subregion) %>%
   summarise(
     total_production = sum(total_production, na.rm = T),
