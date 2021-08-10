@@ -11,12 +11,41 @@ path_db_datastore <- fs::path(r2dii.utils::dbox_port_00(),"06_DataStore", "DataS
 # =================================
 # load data
 # =================================
-masterdata_ownership <- readr::read_rds(fs::path(path_db_analysis_inputs, "masterdata_ownership_datastore", ext = "rda"))
-masterdata_debt <- readr::read_rds(fs::path(path_db_analysis_inputs, "masterdata_debt_datastore", ext = "rda"))
+masterdata_ownership <- readRDS(fs::path(path_db_analysis_inputs, "masterdata_ownership_datastore", ext = "rda"))
+# masterdata_ownership <- readr::read_rds(fs::path(path_db_analysis_inputs, "masterdata_ownership_datastore", ext = "rda"))
+masterdata_debt <- readRDS(fs::path(path_db_analysis_inputs, "masterdata_debt_datastore", ext = "rda"))
+# masterdata_debt <- readr::read_rds(fs::path(path_db_analysis_inputs, "masterdata_debt_datastore", ext = "rda"))
 
-production_coverage_by_sector <- readr::read_csv(fs::path(path_db_datastore, "production_coverage_by_sector", ext = "csv"))
-sector_production_mapped_per_country <- readr::read_csv(fs::path(path_db_datastore, "sector_production_mapped_per_country", ext = "csv"))
-sector_production_mapped_per_technology_country_and_year <- readr::read_csv(fs::path(path_db_datastore, "sector_production_mapped_per_technology_country_and_year", ext = "csv"))
+production_coverage_by_sector <- readr::read_csv(
+  fs::path(path_db_datastore, "production_coverage_by_sector", ext = "csv"),
+  col_types = readr::cols(
+    sector = "c",
+    .default = readr::col_number()
+  )
+)
+
+sector_production_mapped_per_country <- readr::read_csv(
+  fs::path(path_db_datastore, "sector_production_mapped_per_country", ext = "csv"),
+  col_types = readr::cols(
+    sector = "c",
+    country_name = "c",
+    iso2 = "c",
+    region_name = "c",
+    .default = readr::col_number()
+  )
+)
+
+sector_production_mapped_per_technology_country_and_year <- readr::read_csv(
+  fs::path(path_db_datastore, "sector_production_mapped_per_technology_country_and_year", ext = "csv"),
+  col_types = readr::cols(
+    sector = "c",
+    technology = "c",
+    country_name = "c",
+    iso2 = "c",
+    region_name = "c",
+    .default = readr::col_number()
+  )
+)
 
 masterdata <- bind_rows(masterdata_ownership, masterdata_debt)
 
@@ -43,7 +72,7 @@ country_region_bridge <- country_region_bridge %>%
 
 unique_company_names <- masterdata %>%
   filter(year == 2019) %>%
-  distinct(company_name, .keep_all = T) %>%
+  distinct(company_name, .keep_all = TRUE) %>%
   left_join(country_region_bridge, by = c("ald_location" = "iso_a2"))
 
 companies_per_sector <- unique_company_names %>%
@@ -60,18 +89,30 @@ sector_production_mapped_per_region <- sector_production_mapped_per_country %>%
   left_join(country_region_bridge, by = c("iso2" = "iso_a2")) %>%
   group_by(sector, production_year, subregion) %>%
   summarise(
-    total_production = sum(total_production, na.rm = T),
-    mapped_production = sum(mapped_production, na.rm = T),
-    number_of_assets = sum(number_of_assets, na.rm = T)
+    total_production = sum(total_production, na.rm = TRUE),
+    mapped_production = sum(mapped_production, na.rm = TRUE),
+    number_of_assets = sum(number_of_assets, na.rm = TRUE)
   ) %>%
   ungroup() %>%
   transmute(
-    sector, subregion, year = production_year, production_fraction = mapped_production/total_production, number_of_assets
+    sector,
+    subregion,
+    year = production_year,
+    production_fraction = mapped_production/total_production,
+    number_of_assets
   )
 
 global_production_coverage_by_sector <- production_coverage_by_sector %>%
-  transmute(sector, subregion = "Global", production_fraction = mapped_production_coverage, year = 2019) %>%
-  left_join(sector_production_mapped_per_region %>% group_by(sector) %>% summarise(number_of_assets = sum(number_of_assets, na.rm = T)), by = "sector")
+  transmute(
+    sector,
+    subregion = "Global",
+    production_fraction = mapped_production_coverage,
+    year = 2019
+  ) %>%
+  left_join(
+    sector_production_mapped_per_region %>% group_by(sector) %>% summarise(number_of_assets = sum(number_of_assets, na.rm = TRUE)),
+    by = "sector"
+  )
 
 
 
@@ -84,16 +125,35 @@ sector_production_mapped_per_region_per_technology <- sector_production_mapped_p
       "Coal",
       technology
     )
-  ) %>% # aggregated to allow for tech comparison
+  ) %>%
+  mutate(
+    technology = dplyr::if_else(
+      technology == "Oil and Condensate",
+      "Oil",
+      technology
+    )
+  ) %>%
+  mutate(
+    technology = dplyr::if_else(
+      technology == "Natural Gas Liquids",
+      "Gas",
+      technology
+    )
+  ) %>%
   group_by(sector, technology, production_year, subregion) %>%
   summarise(
-    total_production = sum(total_production, na.rm = T),
-    mapped_production = sum(mapped_production, na.rm = T),
-    number_of_assets = sum(number_of_assets, na.rm = T)
+    total_production = sum(total_production, na.rm = TRUE),
+    mapped_production = sum(mapped_production, na.rm = TRUE),
+    number_of_assets = sum(number_of_assets, na.rm = TRUE)
   ) %>%
   ungroup() %>%
   transmute(
-    sector, technology, subregion, year = production_year, production_fraction = mapped_production/total_production, number_of_assets
+    sector,
+    technology,
+    subregion,
+    year = production_year,
+    production_fraction = mapped_production/total_production,
+    number_of_assets
   )
 
 
