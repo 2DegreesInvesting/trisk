@@ -13,15 +13,8 @@ avg_prod_coverage <- production_coverage_by_sector %>%
 coverage_data <- sector_production_mapped_per_region_per_technology %>%
   filter(
     sector %in% c("Automotive", "Coal", "Oil&Gas", "Power"),
-    !technology %in% c("FuelCell", "Natural Gas Liquids"),
+    !technology %in% c("FuelCell"),
     !is.na(subregion)
-  ) %>%
-  mutate(
-    technology = dplyr::if_else(
-      technology == "Oil and Condensate",
-      "Oil",
-      technology
-    )
   ) %>%
   group_by(sector, technology) %>%
   summarise(
@@ -63,7 +56,7 @@ regional_coverage <- sector_production_mapped_per_region %>%
 
 regional_coverage %>% readr::write_csv(file.path("plots", "regional_production_coverage.csv"))
 
-regional_coverage_plot <- regional_coverage_power %>%
+regional_coverage_plot <- regional_coverage %>%
   ggplot(aes(x = subregion, y = production_fraction, fill = sector)) +
   geom_col(position = "dodge") +
   labs(y = "Production Coverage in % of Sector Production by Region") +
@@ -81,11 +74,6 @@ ggsave("regional_production_coverage.png", plot = regional_coverage_plot, path =
 
 
 power_tech_mix_usa_plot <- sector_production_mapped_per_technology_country_and_year %>%
-  # group_by(country_name, production_year, sector) %>%
-  # mutate(
-  #   percentage_production = mapped_production/sum(mapped_production, na.rm = TRUE)
-  # ) %>%
-  # ungroup()%>%
   filter(
     country_name == "United States of America",
     sector == "Power",
@@ -98,11 +86,6 @@ ggsave("power_tech_mix_us.png", plot = power_tech_mix_usa_plot, path = "plots")
 
 
 power_tech_mix_china_plot <- sector_production_mapped_per_technology_country_and_year %>%
-  # group_by(country_name, production_year, sector) %>%
-  # mutate(
-  #   percentage_production = mapped_production/sum(mapped_production, na.rm = TRUE)
-  # ) %>%
-  # ungroup()%>%
   filter(
     country_name == "China",
     sector == "Power",
